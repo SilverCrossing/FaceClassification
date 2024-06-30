@@ -1,3 +1,10 @@
+"""
+Author: SliverCrossing
+使用时请注意修改文件路径，以读取正确的图片，将数据集预先分为两类放入两个文件夹中，数据集自行选择，如果数据集不是128*128尺寸请修改对应参数
+如果数据是rawdata则先用第一段代码处理变为图片
+除了SVC还可以用其他分类器比如RFC、ABC、DTC，从模块中调用对应的函数即可
+"""
+
 import sklearn
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,14 +15,18 @@ import os
 import math
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 
-# 将rawdata转为图片
+# 图片尺寸
+img_size1 = 128
+img_size2 = 128
+
+# 将rawdata转为图片，已转换过一次则此段代码注释掉避免每次运行都要重新转换图片
 # print(os.listdir("./face/face/rawdata"))   # 读取文件路径
 # list1 = []   # 用于存放图片尺寸
 # for filename in os.listdir("./face/face/rawdata"):   # 读取文件夹内的所有图片
@@ -23,7 +34,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 #         img_data = file2.read()
 #     img_data = np.frombuffer(img_data, dtype=np.uint8)   # 将文件换出来
 #     if len(img_data) == 16384:   # 只用到128*128的图片，其他的都不用，因此只转换128的
-#         img = img_data.reshape(128, 128)   # 转为128*128
+#         img = img_data.reshape(img_size1, img_size2)   # 转为128*128
 #     else:
 #         print("未知图片大小：", len(img_data))
 #     cv2.imwrite("./face/face/picture/"+filename+".jpg", img)
@@ -32,7 +43,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 # print("list1:", list1)
 
 
-# 导入mat文件
+# 导入mat文件，暂时用不着先注释掉
 # face_mat_file = loadmat("./face/face/eigenfaces/readImage.mat")
 # ev_mat_file = loadmat("./face/face/eigenfaces/ev.mat")
 # print("readImage:", face_mat_file)
@@ -42,10 +53,10 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 # data1 = ev_mat_file["eigenfaces"]
 # print(data1.shape)
 # for i in range(0, 99):
-#     img_data = data1[i].reshape(128, 128)
+#     img_data = data1[i].reshape(img_size1, img_size2)
 
 
-# 因为数据太少，因此采用数据增强，将图片镜像从而扩大训练集
+# 因为数据太少，因此采用数据增强，将图片镜像从而扩大训练集，运行过一次后此段代码注释掉从而提高效率
 # def flip(image):
 #     flipped_image = np.fliplr(image)
 #     return flipped_image
@@ -61,7 +72,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 
 def img2vec(image, blocksize):
-    image_w, image_h = 128, 128
+    image_w, image_h = img_size1, img_size2
     # 图像方块数据转换为向量
     img_block_vec = np.zeros((int(image_w * image_h / blocksize / blocksize), blocksize * blocksize))
     i = 0
@@ -76,7 +87,7 @@ def img2vec(image, blocksize):
 
 def vec2img(vectors, blocksize):
     # 向量数据转换为图像
-    img_kl = np.zeros((128, 128))
+    img_kl = np.zeros((img_size1, img_size2))
     i = 0
     for r in range(0, img_kl.shape[0], blocksize):
         for c in range(0, img_kl.shape[1], blocksize):
@@ -99,43 +110,35 @@ def kl_transform(vectors, principal_n):
 
 blocksize = 2   # 像素块
 principal_n1 = 16   # 贡献度高的前N个特征值个数
-# for img_name in os.listdir(file_dir):
-#     img_path = file_dir + img_name
-#     img = cv2.imread(img_path)
-#     image_w, image_h = img.shape
-#     new_w, new_h = image_w // blocksize * blocksize, image_h // blocksize * blocksize
-#     img = cv2.resize(img, (new_h, new_w))
-#     vec = img2vec(img, blocksize)
-#     kl1 = vec2img(kl_transform(vec, principal_n1), blocksize)
-#
-#     plt.subplot(1, 2, 1)
-#     plt.imshow(img, 'gray')
-#     plt.subplot(1, 2, 2)
-#     plt.imshow(kl1, 'gray')
 
 # 展示单张图片的K-L结果
-# img = cv2.imread("./face/face/glasses/1290.jpg")
-# image_w, image_h = 128, 128
-# new_w, new_h = image_w // blocksize * blocksize, image_h // blocksize * blocksize
-# img = cv2.resize(img, (new_h, new_w))
-# vec = img2vec(img, blocksize)
-# kl1 = vec2img(kl_transform(vec, principal_n1), blocksize)
-# print("finish")
-# plt.subplot(1, 2, 1)
-# plt.imshow(img, 'gray')
-# plt.subplot(1, 2, 2)
-# plt.imshow(kl1, 'gray')
-# plt.show()
+img = cv2.imread("./face/face/glasses/1290.jpg")
+image_w, image_h = img_size1, img_size2
+new_w, new_h = image_w // blocksize * blocksize, image_h // blocksize * blocksize
+img = cv2.resize(img, (new_h, new_w))
+vec = img2vec(img, blocksize)
+kl1 = vec2img(kl_transform(vec, principal_n1), blocksize)
+print("finish")
+plt.subplot(1, 2, 1)
+plt.imshow(img, 'gray')
+plt.subplot(1, 2, 2)
+plt.imshow(kl1, 'gray')
+plt.show()
 
 
 file_dir = "./face/face/glasses/"
-svc = SVC()   # 使用sklearn中的支持向量机模型
+svc = SVC()   # 使用sklearn中的支持向量机模型，要使用其他模型则可以调用对应的sklearn模块
+# rfc = RandomForestClassifier()
+# dtc = DecisionTreeClassifier()
+# abc = AdaBoostClassifier()
+# logist = LogisticRegression()
+# knn = KNeighborsClassifier()
 X = []   # 存放图像名称
 Y = []   # 存放分类名称
 for f in os.listdir(file_dir):   # 从眼镜类中提取图片
     img = cv2.imread(file_dir + f)
     # 进行K-L变换
-    image_w, image_h = 128, 128
+    image_w, image_h = img_size1, img_size2
     new_w, new_h = image_w // blocksize * blocksize, image_h // blocksize * blocksize
     img = cv2.resize(img, (new_h, new_w))
     X.append(img)
@@ -145,7 +148,7 @@ file_dir = "./face/face/non_glasses/"
 for f in os.listdir(file_dir):   # 从非眼镜类中提取图片
     img = cv2.imread(file_dir + f)
     # 进行K-L变换
-    image_w, image_h = 128, 128
+    image_w, image_h = img_size1, img_size2
     new_w, new_h = image_w // blocksize * blocksize, image_h // blocksize * blocksize
     img = cv2.resize(img, (new_h, new_w))
     X.append(img)
@@ -158,8 +161,8 @@ Y = np.array(Y)
 # 用train_test_split()函数将数据分割为训练集和测试集。test_size=0.2表示测试集占总数据的20%，random_state=0用于确保每次分割都能得到相同的结果
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 # 对数组进行变换以便模型计算
-X_train = X_train.reshape(X_train.shape[0], 128*128*3)
-X_test = X_test.reshape(X_test.shape[0], 128*128*3)
+X_train = X_train.reshape(X_train.shape[0], img_size1*img_size2*3)
+X_test = X_test.reshape(X_test.shape[0], img_size1*img_size2*3)
 
 svc.fit(X_train, Y_train)   # 训练模型
 Y_dtc = svc.predict(X_test)   # 模型预测
